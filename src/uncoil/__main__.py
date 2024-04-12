@@ -29,16 +29,23 @@ def unfurl_directory(directory, skip_list):
 
 def create_tree(directory, skip_list):
     tree = Tree(f"Directory Structure: {directory}")
+    node_map = {directory: tree}
+
     for root, dirs, files in os.walk(directory, topdown=True):
         dirs[:] = [d for d in dirs if not matches_skip_pattern(os.path.join(root, d), skip_list)]
-        path = root.split(os.sep)
-        parent = tree
-        for part in path[1:]:
-            parent = parent.add(part)
+        
+        parent_node = node_map[root]
+
+        for dir in dirs:
+            dir_path = os.path.join(root, dir)
+            if not matches_skip_pattern(dir_path, skip_list):
+                node_map[dir_path] = parent_node.add(dir)
+
         for file in files:
             file_path = os.path.join(root, file)
             if not matches_skip_pattern(file_path, skip_list):
-                parent.add(file)
+                parent_node.add(file)  
+
     return tree
 
 def print_file_contents(file_path):
@@ -65,6 +72,7 @@ def main():
     console = Console(file=open(output_file, 'w') if output_file else sys.stdout)
     tree = create_tree(directory, extensions_to_skip)
     console.print(tree)
+    console.print("\n")
 
     files = unfurl_directory(directory, extensions_to_skip)
 
