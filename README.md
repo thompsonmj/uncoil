@@ -12,12 +12,24 @@ It may be useful for providing context of a codebase to a Large Language Model (
 
 `uncoil` can be installed using pip directly from the GitHub repository or by cloning the repo. Choose the method that best suits your needs.
 
-### Direct Installation with pip
+### Direct Installation with `pip`
+
+First, create and activate a virtual environment. For example, with `conda`, run:
+```bash
+conda create -n myenv -y
+conda activate myenv
+```
 
 To install the latest version of `uncoil` directly from GitHub, run:
 
 ```bash
 pip install git+https://github.com/thompsonmj/uncoil.git
+```
+
+Or to install a pinned release version, such as v1.0.0, run:
+
+```bash
+pip install git+https://github.com/thompsonmj/uncoil.git@v1.0.0
 ```
 
 ## Usage
