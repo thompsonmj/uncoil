@@ -49,3 +49,9 @@ uncoil -d directory -o output.txt
 ```bash
 uncoil -d directory -o output.txt -x .log,.tmp,.git
 ```
+
+For example, see the [examples/](examples/) directory for output of the following command run on the `uncoil` directory itself (which may be out of date):
+
+```bash
+uncoil -d . -o examples/uncoil.txt -x .git,.gitignore,LICENSE,.pyc
+```
