@@ -23,13 +23,13 @@ conda activate myenv
 To install the latest version of `uncoil` directly from GitHub, run:
 
 ```bash
-pip install git+https://github.com/thompsonmj/uncoil.git
+pip install git+ssh://git@github.com/thompsonmj/uncoil.git
 ```
 
 Or to install a pinned release version, such as v1.0.1, run:
 
 ```bash
-pip install git+https://github.com/thompsonmj/uncoil.git@v1.0.1
+pip install git+ssh://git@github.com/thompsonmj/uncoil.git@v1.0.1
 ```
 
 ## Usage
