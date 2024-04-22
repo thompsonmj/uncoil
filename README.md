@@ -1,10 +1,10 @@
 # uncoil
 
-`uncoil` is a command-line tool designed to explore and print contents of directories with options to selectively skip certain file extensions or directories into a flat format either to standard out or a text file. 
+`uncoil` is a command-line tool designed to explore and recursively unfurl the contents of a directory into a single output, either printed to the terminal or saved to a file. It has an option to skip certain file extensions or entire subdirectories, as it works best with text-based files. 
 
-It will produce tree visualization of directories and files and will reveal the contents of files not skipped by the user. 
+It will produce tree visualization of directories and files and will reveal the contents of files not specified to be skipped. 
 
-This can be useful for navigating large projects, quickly summarizing as well as thoroughly revealing the structure and contents of directories.
+This can be useful for navigating large projects, quickly summarizing as well as thoroughly revealing the structure and contents of a project.
 
 It may be useful for providing context of a codebase to a Large Language Model (LLM).
 
