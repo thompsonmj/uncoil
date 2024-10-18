@@ -26,10 +26,10 @@ To install the latest version of `uncoil` directly from GitHub, run:
 pip install git+ssh://git@github.com/thompsonmj/uncoil.git
 ```
 
-Or to install a pinned release version, such as v1.1.0, run:
+Or to install a pinned release version, such as v1.1.1, run:
 
 ```bash
-pip install git+ssh://git@github.com/thompsonmj/uncoil.git@v1.1.0
+pip install git+ssh://git@github.com/thompsonmj/uncoil.git@v1.1.1
 ```
 
 ## Usage

@@ -42,7 +42,7 @@ def print_file_contents(file_path, console):
         with open(file_path, 'r', encoding='utf-8') as file:
             contents = file.read()
             console.print(f"==> {file_path} <==")
-            console.print(contents)
+            console.print(contents, markup=False)
             console.print("\n")  # Adds an extra newline for readability between files
     except Exception as e:
         console.print(f"Error reading {file_path}: {e}")
