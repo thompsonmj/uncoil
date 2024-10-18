@@ -1,52 +1,25 @@
+<uncoil_codebase>
 Directory Structure: .
-+-- examples
-|   `-- uncoil.txt
-+-- src
-|   `-- uncoil
-|       +-- __pycache__
-|       +-- __init__.py
-|       `-- __main__.py
-+-- tests
-|   +-- test_main.py
-|   `-- __init__.py
-+-- pyproject.toml
-`-- README.md
+├── tests
+│   ├── __init__.py
+│   └── test_main.py
+├── src
+│   └── uncoil
+│       ├── __init__.py
+│       └── __main__.py
+├── README.md
+└── pyproject.toml
 
 
-==> .\pyproject.toml <==
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[project]
-name = "uncoil"
-version = "1.0.0"
-description = "A command-line tool to explore and print contents of directories with options to skip certain patterns."
-authors = [{ name = "Matthew J. Thompson", email = "thompson.m.j@outlook.com" }]
-license = {file = "LICENSE"}
-readme = "README.md"
-requires-python = ">=3.8"
-dependencies = [
-    "docopt-ng >= 0.9.0",
-    "rich >= 13.6.0"
-]
-
-[project.scripts]
-uncoil = "uncoil.__main__:main"
-
-[tool.hatch.version]
-enabled = true
-
-
-
-==> .\README.md <==
+==> ./README.md <==
 # uncoil
 
-`uncoil` is a command-line tool designed to explore and print contents of directories with options to selectively skip certain file extensions or directories into a flat format either to standard out or a text file. 
+`uncoil` is a command-line tool designed to explore and recursively unfurl the contents of a directory into a single output, either printed to the terminal or saved to a file. It has an option to skip certain 
+file extensions or entire subdirectories, as it works best with text-based files. 
 
-It will produce tree visualization of directories and files and will reveal the contents of files not skipped by the user. 
+It will produce tree visualization of directories and files and will reveal the contents of files not specified to be skipped. 
 
-This can be useful for navigating large projects, quickly summarizing as well as thoroughly revealing the structure and contents of directories.
+This can be useful for navigating large projects, quickly summarizing as well as thoroughly revealing the structure and contents of a project.
 
 It may be useful for providing context of a codebase to a Large Language Model (LLM).
 
@@ -65,13 +38,13 @@ conda activate myenv
 To install the latest version of `uncoil` directly from GitHub, run:
 
 ```bash
-pip install git+https://github.com/thompsonmj/uncoil.git
+pip install git+ssh://git@github.com/thompsonmj/uncoil.git
 ```
 
-Or to install a pinned release version, such as v1.0.0, run:
+Or to install a pinned release version, such as v1.1.0, run:
 
 ```bash
-pip install git+https://github.com/thompsonmj/uncoil.git@v1.0.0
+pip install git+ssh://git@github.com/thompsonmj/uncoil.git@v1.1.0
 ```
 
 ## Usage
@@ -81,9 +54,21 @@ uncoil -d <directory> [-o <output_file>] [-x <extensions_to_skip,dirs_to_skip>]
 
 ### Options
 
-- `-d <directory>`: **Required.** The directory you want to process.
-- `-o <output_file>`: Optional. Output file to redirect the output into. If not provided, the output will be printed to the console.
-- `-x <extensions_to_skip,dirs_to_skip>`: Optional. A comma-separated list of file extensions or subdirectories to skip.
+```console
+usage: uncoil [-h] -d DIRECTORY [-o OUTPUT_FILE] [-x EXCLUDE] [-t TAG]
+
+Process a directory and unfurl its contents.
+
+options:
+  -h, --help            show this help message and exit
+  -d DIRECTORY, --directory DIRECTORY
+                        Directory to process.
+  -o OUTPUT_FILE, --output_file OUTPUT_FILE
+                        Output file to redirect output into.
+  -x EXCLUDE, --exclude EXCLUDE
+                        Comma-separated list of file extensions or directories to skip.
+  -t TAG, --tag TAG     Optional tag to wrap around output. Enter 'none' for no tag.
+```
 
 ### Examples
 
@@ -104,52 +89,262 @@ uncoil -d directory -o output.txt
 uncoil -d directory -o output.txt -x .log,.tmp,.git
 ```
 
-For example, see the [examples/](examples/) directory for output of the following command run on the `uncoil` directory itself (which may be out of date):
+5. **Save the unfiltered structure of a directory to a file, wrapping the output in a custom tag:**
+```bash
+uncoil -d directory -o output.txt -t "my_project"
+```
+
+For example, see the (examples/) directory for output of the following command run on this `uncoil` repository itself:
 
 ```bash
-uncoil -d . -o examples/uncoil.txt -x .git,.gitignore,LICENSE,.pyc
+uncoil -d . \
+-o examples/uncoil.txt \
+-x .git,.gitignore,LICENSE,.venv,.ruff_cache,__pycache__,.pytest_cache,examples \
+-t uncoil_codebase
 ```
 
 
 
-==> .\examples\uncoil.txt <==
-Directory Structure: .
-+-- examples
-|   `-- uncoil.txt
-+-- src
-|   `-- uncoil
-|       +-- __pycache__
-|       +-- __init__.py
-|       `-- __main__.py
-+-- tests
-|   +-- test_main.py
-|   `-- __init__.py
-+-- pyproject.toml
-`-- README.md
+==> ./pyproject.toml <==
+
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+packages = ["src/uncoil"]
+
+
+name = "uncoil"
+version = "1.1.0"
+description = "A command-line tool to explore and print contents of directories with options to skip certain patterns."
+authors = [{ name = "Matthew J. Thompson", email = "thompson.m.j@outlook.com" }]
+license = {file = "LICENSE"}
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "rich >= 13.6.0",
+]
+
+
+dev = [
+    "pytest",
+    "ruff",
+]
+
+
+uncoil = "uncoil.__main__:main"
+
+
+enabled = true
 
 
 
-
-
-==> .\src\uncoil\__init__.py <==
+==> ./tests/__init__.py <==
 
 
 
-==> .\src\uncoil\__main__.py <==
-"""
-Usage:
-  uncoil -d <directory> [-o <output_file>] [-x <extensions_to_skip,dir_to_skip>]
-
-Options:
-  -h --help                 Show this screen.
-  -d <directory>            Directory to process.
-  -o <output_file>          Output file to redirect output into.
-  -x <extensions_to_skip>   Comma-separated list of file extensions or directories to skip.
-"""
+==> ./tests/test_main.py <==
+# tests/test_main.py
 
 import os
 import sys
-from docopt import docopt
+import pytest
+import tempfile
+from unittest import mock
+from pathlib import Path
+from io import StringIO
+
+# Import the main module from the uncoil package
+from src.uncoil.__main__ import (
+    matches_skip_pattern,
+    unfurl_directory,
+    create_tree,
+    print_file_contents,
+    main
+)
+
+from rich.tree import Tree
+
+@pytest.fixture
+def sample_directory(tmp_path):
+    """
+    Create a sample directory structure for testing.
+    """
+    # Create directories
+    (tmp_path / "src" / "uncoil").mkdir(parents=True)
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "examples").mkdir()
+    
+    # Create files
+    files = {
+        "README.md": "# Sample README",
+        "pyproject.toml": "requires = ['pytest']",
+        "src/uncoil/__init__.py": "",
+        "src/uncoil/__main__.py": "",
+        "tests/__init__.py": "",
+        "tests/test_main.py": "",
+        "examples/uncoil.txt": "Sample output"
+    }
+    
+    for file_path, content in files.items():
+        file = tmp_path / file_path
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_text(content)
+    
+    # Create skipped directories and files
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "__pycache__").mkdir()
+    (tmp_path / ".venv").mkdir()
+    (tmp_path / "LICENSE").write_text("MIT License")
+    
+    return tmp_path
+
+def test_matches_skip_pattern():
+    """
+    Test the matches_skip_pattern function.
+    """
+    assert matches_skip_pattern("src/uncoil/__init__.py", [".git", ".pyc"]) == False
+    assert matches_skip_pattern(".git/config", [".git", ".pyc"]) == True
+    assert matches_skip_pattern("src/uncoil/__pycache__/file.pyc", [".git", ".pyc"]) == True
+    assert matches_skip_pattern("README.md", []) == False
+    assert matches_skip_pattern("README.md", ["README"]) == True
+
+def test_unfurl_directory(sample_directory):
+    """
+    Test the unfurl_directory generator.
+    """
+    skip_list = [".git", ".pyc", "__pycache__", ".venv", "LICENSE"]
+    files = list(unfurl_directory(sample_directory, skip_list))
+    
+    expected_files = [
+        str(sample_directory / "README.md"),
+        str(sample_directory / "pyproject.toml"),
+        str(sample_directory / "src/uncoil/__init__.py"),
+        str(sample_directory / "src/uncoil/__main__.py"),
+        str(sample_directory / "tests/__init__.py"),
+        str(sample_directory / "tests/test_main.py"),
+        str(sample_directory / "examples/uncoil.txt")
+    ]
+    
+    assert sorted(files) == sorted(expected_files)
+
+def test_print_file_contents(sample_directory, capsys):
+    """
+    Test the print_file_contents function.
+    """
+    # Capture the console output
+    captured_output = StringIO()
+    console = mock.Mock()
+    
+    file_path = sample_directory / "README.md"
+    print_file_contents(file_path, console)
+    
+    # Assert that console.print was called with the correct content
+    console.print.assert_any_call(f"==> {file_path} <==")
+    console.print.assert_any_call("# Sample README")
+    console.print.assert_any_call("\n")
+
+def test_main_with_tags(sample_directory, tmp_path):
+    """
+    Integration test: Run the main function with tags and verify the output file.
+    """
+    output_file = tmp_path / "output_with_tags.txt"
+    args = [
+        "uncoil",
+        "-d", str(sample_directory),
+        "-o", str(output_file),
+        "-t", "fish",
+        "-x", ".git,.gitignore,__pycache__,.venv,LICENSE"
+    ]
+    
+    with mock.patch.object(sys, 'argv', args):
+        main()
+    
+    # Read the output file and verify contents
+    content = output_file.read_text()
+    
+    assert content.startswith("<fish>\n")
+    assert content.endswith("</fish>\n")
+    assert "Directory Structure: " in content
+    assert "==> " in content  # Ensures that file contents are included
+
+def test_main_without_tags(sample_directory, tmp_path):
+    """
+    Integration test: Run the main function without tags and verify the output file.
+    """
+    output_file = tmp_path / "output_without_tags.txt"
+    args = [
+        "uncoil",
+        "-d", str(sample_directory),
+        "-o", str(output_file),
+        "-t", "none",
+        "-x", ".git,.gitignore,__pycache__,.venv,LICENSE,.pytest_cache"
+    ]
+    
+    with mock.patch.object(sys, 'argv', args):
+        main()
+    
+    # Read the output file and verify contents
+    content = output_file.read_text()
+    
+    assert not content.startswith("<")
+    assert not content.endswith(">\n")
+    assert "Directory Structure: " in content
+    assert "==> " in content  # Ensure that file contents are included
+
+def test_main_default_tags(sample_directory, tmp_path):
+    """
+    Integration test: Run the main function without specifying the tag to use the default 'codebase'.
+    """
+    output_file = tmp_path / "output_default_tags.txt"
+    args = [
+        "uncoil",
+        "-d", str(sample_directory),
+        "-o", str(output_file),
+        "-x", ".git,.gitignore,__pycache__,.venv,LICENSE"
+    ]
+    
+    with mock.patch.object(sys, 'argv', args):
+        main()
+    
+    # Read the output file and verify contents
+    content = output_file.read_text()
+    
+    assert content.startswith("<codebase>\n")
+    assert content.endswith("</codebase>\n")
+    assert "Directory Structure: " in content
+    assert "==> " in content  # Ensure that file contents are included
+
+def test_main_missing_required_argument(tmp_path, capsys):
+    """
+    Integration test: Run the main function without the required '-d' argument and verify it exits with an error.
+    """
+    output_file = tmp_path / "output_error.txt"
+    args = [
+        "uncoil",
+        "-o", str(output_file),
+        "-t", "fish",
+        "-x", ".git,.gitignore,__pycache__,.venv,LICENSE"
+    ]
+    
+    with mock.patch.object(sys, 'argv', args):
+        with pytest.raises(SystemExit) as exc_info:
+            main()
+    
+    # Capture the stderr output
+    captured = capsys.readouterr()
+    assert "error: the following arguments are required: -d/--directory" in captured.err
+
+
+
+==> ./src/uncoil/__init__.py <==
+
+
+
+==> ./src/uncoil/__main__.py <==
+import os
+import sys
+import argparse
 from rich.console import Console
 from rich.tree import Tree
 
@@ -159,7 +354,7 @@ def matches_skip_pattern(file_path, skip_patterns):
 
 def unfurl_directory(directory, skip_list):
     for root, dirs, files in os.walk(directory, topdown=True):
-        dirs[:] = [d for d in dirs if not matches_skip_pattern(os.path.join(root, d), skip_list)]
+        dirs[:] = 
         for file in files:
             file_path = os.path.join(root, file)
             if not matches_skip_pattern(file_path, skip_list):
@@ -170,14 +365,14 @@ def create_tree(directory, skip_list):
     node_map = {directory: tree}
 
     for root, dirs, files in os.walk(directory, topdown=True):
-        dirs[:] = [d for d in dirs if not matches_skip_pattern(os.path.join(root, d), skip_list)]
+        dirs[:] = 
         
-        parent_node = node_map[root]
+        parent_node = node_map
 
         for dir in dirs:
             dir_path = os.path.join(root, dir)
             if not matches_skip_pattern(dir_path, skip_list):
-                node_map[dir_path] = parent_node.add(dir)
+                node_map = parent_node.add(dir)
 
         for file in files:
             file_path = os.path.join(root, file)
@@ -186,54 +381,72 @@ def create_tree(directory, skip_list):
 
     return tree
 
-def print_file_contents(file_path):
+def print_file_contents(file_path, console):
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             contents = file.read()
-            print(f"==> {file_path} <==")
-            print(contents)
-            print("\n")  # Adds an extra newline for readability between files
+            console.print(f"==> {file_path} <==")
+            console.print(contents)
+            console.print("\n")  # Adds an extra newline for readability between files
     except Exception as e:
-        print(f"Error reading {file_path}: {e}")
+        console.print(f"Error reading {file_path}: {e}")
 
 def main():
-    args = docopt(__doc__)
-    directory = args['-d']
-    output_file = args.get('-o')
-    extensions_to_skip = args.get('-x', '')
+    # Set up argument parsing using argparse
+    parser = argparse.ArgumentParser(
+        description='Process a directory and unfurl its contents.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument('-d', '--directory', required=True, help='Directory to process.')
+    parser.add_argument('-o', '--output_file', help='Output file to redirect output into.')
+    parser.add_argument('-x', '--exclude', help='Comma-separated list of file extensions or directories to skip.')
+    parser.add_argument('-t', '--tag', default='codebase', help="Optional tags to wrap around output. E.g. <tag> ... </tag>. Enter 'none' (without quotes) for no tag.")
+    
+    args = parser.parse_args()
+    
+    directory = args.directory
+    output_file = args.output_file
+    extensions_to_skip = args.exclude.split(',') if args.exclude else []
+    tag_keyword = args.tag
 
-    if extensions_to_skip:
-        extensions_to_skip = extensions_to_skip.split(',')
+    # Initialize Console
+    if output_file:
+        try:
+            file_handle = open(output_file, 'w', encoding='utf-8')
+        except Exception as e:
+            print(f"Error opening output file {output_file}: {e}")
+            sys.exit(1)
+        console = Console(file=file_handle)
     else:
-        extensions_to_skip = []
+        console = Console()
 
-    console = Console(file=open(output_file, 'w') if output_file else sys.stdout)
+    # Handle optional tags, with 'none' meaning no tags
+    if tag_keyword.lower() != 'none':
+        opening_tag = f"<{tag_keyword}>"
+        closing_tag = f"</{tag_keyword}>"
+        console.print(opening_tag)
+
+    # Create and print the directory tree
     tree = create_tree(directory, extensions_to_skip)
     console.print(tree)
     console.print("\n")
 
+    # Unfurl files and print their contents
     files = unfurl_directory(directory, extensions_to_skip)
-
-    if output_file:
-        sys.stdout = open(output_file, 'a')
 
     try:
         for file_path in files:
-            print_file_contents(file_path)
+            print_file_contents(file_path, console)
+        
+        if tag_keyword.lower() != 'none':
+            console.print(closing_tag)
     finally:
         if output_file:
-            sys.stdout.close()
+            file_handle.close()
 
 if __name__ == '__main__':
     main()
 
 
 
-==> .\tests\test_main.py <==
-
-
-
-==> .\tests\__init__.py <==
-
-
-
+</uncoil_codebase>

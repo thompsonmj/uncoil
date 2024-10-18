@@ -26,10 +26,10 @@ To install the latest version of `uncoil` directly from GitHub, run:
 pip install git+ssh://git@github.com/thompsonmj/uncoil.git
 ```
 
-Or to install a pinned release version, such as v1.0.1, run:
+Or to install a pinned release version, such as v1.1.0, run:
 
 ```bash
-pip install git+ssh://git@github.com/thompsonmj/uncoil.git@v1.0.1
+pip install git+ssh://git@github.com/thompsonmj/uncoil.git@v1.1.0
 ```
 
 ## Usage
@@ -39,9 +39,21 @@ uncoil -d <directory> [-o <output_file>] [-x <extensions_to_skip,dirs_to_skip>]
 
 ### Options
 
-- `-d <directory>`: **Required.** The directory you want to process.
-- `-o <output_file>`: Optional. Output file to redirect the output into. If not provided, the output will be printed to the console.
-- `-x <extensions_to_skip,dirs_to_skip>`: Optional. A comma-separated list of file extensions or subdirectories to skip.
+```console
+usage: uncoil [-h] -d DIRECTORY [-o OUTPUT_FILE] [-x EXCLUDE] [-t TAG]
+
+Process a directory and unfurl its contents.
+
+options:
+  -h, --help            show this help message and exit
+  -d DIRECTORY, --directory DIRECTORY
+                        Directory to process.
+  -o OUTPUT_FILE, --output_file OUTPUT_FILE
+                        Output file to redirect output into.
+  -x EXCLUDE, --exclude EXCLUDE
+                        Comma-separated list of file extensions or directories to skip.
+  -t TAG, --tag TAG     Optional tag to wrap around output. Enter 'none' for no tag.
+```
 
 ### Examples
 
@@ -62,8 +74,16 @@ uncoil -d directory -o output.txt
 uncoil -d directory -o output.txt -x .log,.tmp,.git
 ```
 
-For example, see the [examples/](examples/) directory for output of the following command run on the `uncoil` directory itself (which may be out of date):
+5. **Save the unfiltered structure of a directory to a file, wrapping the output in a custom tag:**
+```bash
+uncoil -d directory -o output.txt -t "my_project"
+```
+
+For example, see the [examples/](examples/) directory for output of the following command run on this `uncoil` repository itself:
 
 ```bash
-uncoil -d . -o examples/uncoil.txt -x .git,.gitignore,LICENSE,.pyc
+uncoil -d . \
+-o examples/uncoil.txt \
+-x .git,.gitignore,LICENSE,.venv,.ruff_cache,__pycache__,.pytest_cache,examples \
+-t uncoil_codebase
 ```

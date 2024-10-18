@@ -1,17 +1,6 @@
-"""
-Usage:
-  uncoil -d <directory> [-o <output_file>] [-x <extensions_to_skip,dir_to_skip>]
-
-Options:
-  -h --help                 Show this screen.
-  -d <directory>            Directory to process.
-  -o <output_file>          Output file to redirect output into.
-  -x <extensions_to_skip>   Comma-separated list of file extensions or directories to skip.
-"""
-
 import os
 import sys
-from docopt import docopt
+import argparse
 from rich.console import Console
 from rich.tree import Tree
 
@@ -48,43 +37,68 @@ def create_tree(directory, skip_list):
 
     return tree
 
-def print_file_contents(file_path):
+def print_file_contents(file_path, console):
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             contents = file.read()
-            print(f"==> {file_path} <==")
-            print(contents)
-            print("\n")  # Adds an extra newline for readability between files
+            console.print(f"==> {file_path} <==")
+            console.print(contents)
+            console.print("\n")  # Adds an extra newline for readability between files
     except Exception as e:
-        print(f"Error reading {file_path}: {e}")
+        console.print(f"Error reading {file_path}: {e}")
 
 def main():
-    args = docopt(__doc__)
-    directory = args['-d']
-    output_file = args.get('-o')
-    extensions_to_skip = args.get('-x', '')
+    # Set up argument parsing using argparse
+    parser = argparse.ArgumentParser(
+        description='Process a directory and unfurl its contents.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument('-d', '--directory', required=True, help='Directory to process.')
+    parser.add_argument('-o', '--output_file', help='Output file to redirect output into.')
+    parser.add_argument('-x', '--exclude', help='Comma-separated list of file extensions or directories to skip.')
+    parser.add_argument('-t', '--tag', default='codebase', help="Optional tags to wrap around output. E.g. <tag> ... </tag>. Enter 'none' (without quotes) for no tag.")
+    
+    args = parser.parse_args()
+    
+    directory = args.directory
+    output_file = args.output_file
+    extensions_to_skip = args.exclude.split(',') if args.exclude else []
+    tag_keyword = args.tag
 
-    if extensions_to_skip:
-        extensions_to_skip = extensions_to_skip.split(',')
+    # Initialize Console
+    if output_file:
+        try:
+            file_handle = open(output_file, 'w', encoding='utf-8')
+        except Exception as e:
+            print(f"Error opening output file {output_file}: {e}")
+            sys.exit(1)
+        console = Console(file=file_handle)
     else:
-        extensions_to_skip = []
+        console = Console()
 
-    console = Console(file=open(output_file, 'w') if output_file else sys.stdout)
+    # Handle optional tags, with 'none' meaning no tags
+    if tag_keyword.lower() != 'none':
+        opening_tag = f"<{tag_keyword}>"
+        closing_tag = f"</{tag_keyword}>"
+        console.print(opening_tag)
+
+    # Create and print the directory tree
     tree = create_tree(directory, extensions_to_skip)
     console.print(tree)
     console.print("\n")
 
+    # Unfurl files and print their contents
     files = unfurl_directory(directory, extensions_to_skip)
-
-    if output_file:
-        sys.stdout = open(output_file, 'a')
 
     try:
         for file_path in files:
-            print_file_contents(file_path)
+            print_file_contents(file_path, console)
+        
+        if tag_keyword.lower() != 'none':
+            console.print(closing_tag)
     finally:
         if output_file:
-            sys.stdout.close()
+            file_handle.close()
 
 if __name__ == '__main__':
     main()
