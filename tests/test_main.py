@@ -1,5 +1,3 @@
-# tests/test_main.py
-
 import os
 import sys
 import pytest
@@ -8,7 +6,6 @@ from unittest import mock
 from pathlib import Path
 from io import StringIO
 
-# Import the main module from the uncoil package
 from src.uncoil.__main__ import (
     matches_skip_pattern,
     unfurl_directory,
