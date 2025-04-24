@@ -7,7 +7,7 @@ packages = ["src/uncoil"]
 
 [project]
 name = "uncoil"
-version = "1.1.1"
+version = "1.1.2"
 description = "A command-line tool to explore and print contents of directories with options to skip certain patterns."
 authors = [{ name = "Matthew J. Thompson", email = "thompson.m.j@outlook.com" }]
 license = {file = "LICENSE"}
