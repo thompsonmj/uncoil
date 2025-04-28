@@ -3,10 +3,19 @@ import sys
 import argparse
 from rich.console import Console
 from rich.tree import Tree
+import fnmatch
+
+from uncoil.config.hard_ignore import HARD_IGNORE_PATTERNS
+from uncoil.config.soft_ignore import SOFT_IGNORE_PATTERNS
+import logging
 
 def matches_skip_pattern(file_path, skip_patterns):
     lower_file = file_path.lower()
     return any(skip.lower() in lower_file for skip in skip_patterns)
+
+def is_soft_ignored(file_path, soft_patterns):
+    p = file_path.lower()
+    return any(fnmatch.fnmatch(p, pat.lower()) for pat in soft_patterns)
 
 def unfurl_directory(directory, skip_list):
     for root, dirs, files in os.walk(directory, topdown=True):
@@ -37,17 +46,24 @@ def create_tree(directory, skip_list):
 
     return tree
 
-def print_file_contents(file_path, console):
+def print_file_contents(file_path, console, soft_patterns):
     try:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            contents = file.read()
-            console.print(f"==> {file_path} <==")
+        console.print(f"==> {file_path} <==")
+        if is_soft_ignored(file_path, soft_patterns):
+            console.print("[contents ignored]\n", markup=False)
+        else:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                contents = f.read()
             console.print(contents, markup=False)
-            console.print("\n")  # Adds an extra newline for readability between files
+            console.print("\n")
     except Exception as e:
         console.print(f"Error reading {file_path}: {e}")
 
 def main():
+
+    logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
+    logger = logging.getLogger(__name__)
+
     # Set up argument parsing using argparse
     parser = argparse.ArgumentParser(
         description='Process a directory and unfurl its contents.',
@@ -62,7 +78,6 @@ def main():
     
     directory = args.directory
     output_file = args.output_file
-    extensions_to_skip = args.exclude.split(',') if args.exclude else []
     tag_keyword = args.tag
 
     # Initialize Console
@@ -76,6 +91,25 @@ def main():
     else:
         console = Console()
 
+    hard_patterns = list(HARD_IGNORE_PATTERNS)
+
+    # If the user passed -o, add that exact path
+    if output_file:
+        hard_patterns.append(os.path.abspath(output_file))
+
+
+    # Now consume -x/--exclude flags
+    cli_excludes = args.exclude.split(',') if args.exclude else []
+    for pat in cli_excludes:
+        if pat in hard_patterns:
+            logger.info(f"Ignoring duplicate pattern '{pat}' (already in defaults)")
+        else:
+            hard_patterns.append(pat)
+
+    soft_patterns = list(SOFT_IGNORE_PATTERNS)
+
+
+
     # Handle optional tags, with 'none' meaning no tags
     if tag_keyword.lower() != 'none':
         opening_tag = f"<{tag_keyword}>"
@@ -83,16 +117,16 @@ def main():
         console.print(opening_tag)
 
     # Create and print the directory tree
-    tree = create_tree(directory, extensions_to_skip)
+    tree = create_tree(directory, hard_patterns)
     console.print(tree)
     console.print("\n")
 
     # Unfurl files and print their contents
-    files = unfurl_directory(directory, extensions_to_skip)
+    files = unfurl_directory(directory, hard_patterns)
 
     try:
         for file_path in files:
-            print_file_contents(file_path, console)
+            print_file_contents(file_path, console, soft_patterns)
         
         if tag_keyword.lower() != 'none':
             console.print(closing_tag)
