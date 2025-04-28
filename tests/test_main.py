@@ -1,20 +1,14 @@
-import os
 import sys
 import pytest
-import tempfile
 from unittest import mock
-from pathlib import Path
-from io import StringIO
 
 from src.uncoil.__main__ import (
     matches_skip_pattern,
     unfurl_directory,
-    create_tree,
     print_file_contents,
     main
 )
 
-from rich.tree import Tree
 
 @pytest.fixture
 def sample_directory(tmp_path):
@@ -54,11 +48,11 @@ def test_matches_skip_pattern():
     """
     Test the matches_skip_pattern function.
     """
-    assert matches_skip_pattern("src/uncoil/__init__.py", [".git", ".pyc"]) == False
-    assert matches_skip_pattern(".git/config", [".git", ".pyc"]) == True
-    assert matches_skip_pattern("src/uncoil/__pycache__/file.pyc", [".git", ".pyc"]) == True
-    assert matches_skip_pattern("README.md", []) == False
-    assert matches_skip_pattern("README.md", ["README"]) == True
+    assert matches_skip_pattern(".git/config", [".git", ".pyc"])
+    assert matches_skip_pattern("src/uncoil/__pycache__/file.pyc", [".git", ".pyc"])
+    assert matches_skip_pattern("README.md", ["README"])
+    assert not matches_skip_pattern("src/uncoil/__init__.py", [".git", ".pyc"])
+    assert not matches_skip_pattern("README.md", [])
 
 def test_unfurl_directory(sample_directory):
     """
@@ -83,8 +77,7 @@ def test_print_file_contents(sample_directory, capsys):
     """
     Test the print_file_contents function.
     """
-    # Capture the console output
-    captured_output = StringIO()
+
     console = mock.Mock()
     
     file_path = sample_directory / "README.md"
@@ -92,7 +85,7 @@ def test_print_file_contents(sample_directory, capsys):
     
     # Assert that console.print was called with the correct content
     console.print.assert_any_call(f"==> {file_path} <==")
-    console.print.assert_any_call("# Sample README")
+    console.print.assert_any_call("# Sample README", markup=False)
     console.print.assert_any_call("\n")
 
 def test_main_with_tags(sample_directory, tmp_path):
@@ -179,7 +172,7 @@ def test_main_missing_required_argument(tmp_path, capsys):
     ]
     
     with mock.patch.object(sys, 'argv', args):
-        with pytest.raises(SystemExit) as exc_info:
+        with pytest.raises(SystemExit):
             main()
     
     # Capture the stderr output
