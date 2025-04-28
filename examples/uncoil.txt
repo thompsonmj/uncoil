@@ -5,17 +5,36 @@ Directory Structure: .
 │   └── test_main.py
 ├── src
 │   └── uncoil
+│       ├── config
+│       │   ├── __init__.py
+│       │   ├── hard_ignore.py
+│       │   └── soft_ignore.py
 │       ├── __init__.py
 │       └── __main__.py
+├── .pre-commit-config.yaml
 ├── README.md
 └── pyproject.toml
+
+
+==> ./.pre-commit-config.yaml <==
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.7
+    hooks:
+      - id: ruff
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: no-commit-to-branch
+        args: ["--branch", "main"]
+
 
 
 ==> ./README.md <==
 # uncoil
 
-`uncoil` is a command-line tool designed to explore and recursively unfurl the contents of a directory into a single output, either printed to the terminal or saved to a file. It has an option to skip certain 
-file extensions or entire subdirectories, as it works best with text-based files. 
+`uncoil` is a command-line tool designed to explore and recursively unfurl the contents of a directory into a single output, either printed to the 
+terminal or saved to a file. It has an option to skip certain file extensions or entire subdirectories, as it works best with text-based files. 
 
 It will produce tree visualization of directories and files and will reveal the contents of files not specified to be skipped. 
 
@@ -25,26 +44,10 @@ It may be useful for providing context of a codebase to a Large Language Model (
 
 ## Installation
 
-`uncoil` can be installed using pip directly from the GitHub repository or by cloning the repo. Choose the method that best suits your needs.
-
-### Direct Installation with `pip`
-
-First, create and activate a virtual environment. For example, with `conda`, run:
-```bash
-conda create -n myenv -y
-conda activate myenv
-```
-
-To install the latest version of `uncoil` directly from GitHub, run:
+To install the latest version of `uncoil`, run:
 
 ```bash
-pip install git+ssh://git@github.com/thompsonmj/uncoil.git
-```
-
-Or to install a pinned release version, such as v1.1.0, run:
-
-```bash
-pip install git+ssh://git@github.com/thompsonmj/uncoil.git@v1.1.0
+pip install uncoil
 ```
 
 ## Usage
@@ -94,28 +97,45 @@ uncoil -d directory -o output.txt -x .log,.tmp,.git
 uncoil -d directory -o output.txt -t "my_project"
 ```
 
-For example, see the (examples/) directory for output of the following command run on this `uncoil` repository itself:
+For example, see the [examples/](examples/) directory for output of the following command run on this `uncoil` repository itself:
 
 ```bash
 uncoil -d . \
 -o examples/uncoil.txt \
--x .git,.gitignore,LICENSE,.venv,.ruff_cache,__pycache__,.pytest_cache,examples \
+-x LICENSE \
 -t uncoil_codebase
+```
+## Development
+To develop the package further:
+
+1. Clone the repository and create a branch
+2. Install with dev dependencies:
+```bash
+pip install -e ".[dev]"
+```
+3. Install pre-commit hook
+```bash
+pre-commit install
+pre-commit autoupdate # optionally update
+```
+4. Run tests:
+```bash
+pytest
 ```
 
 
 
 ==> ./pyproject.toml <==
-
+[build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-
+[tool.hatch.build.targets.wheel]
 packages = ["src/uncoil"]
 
-
+[project]
 name = "uncoil"
-version = "1.1.0"
+version = "1.2.0"
 description = "A command-line tool to explore and print contents of directories with options to skip certain patterns."
 authors = [{ name = "Matthew J. Thompson", email = "thompson.m.j@outlook.com" }]
 license = {file = "LICENSE"}
@@ -125,16 +145,17 @@ dependencies = [
     "rich >= 13.6.0",
 ]
 
-
+[project.optional-dependencies]
 dev = [
     "pytest",
     "ruff",
+    "pre-commit",
 ]
 
-
+[project.scripts]
 uncoil = "uncoil.__main__:main"
 
-
+[tool.hatch.version]
 enabled = true
 
 
@@ -144,26 +165,26 @@ enabled = true
 
 
 ==> ./tests/test_main.py <==
-# tests/test_main.py
-
 import os
-import sys
-import pytest
-import tempfile
-from unittest import mock
-from pathlib import Path
 from io import StringIO
+from rich.console import Console
+import sys
+from unittest import mock
+import fnmatch
 
-# Import the main module from the uncoil package
+import pytest
+from rich.tree import Tree
+
 from src.uncoil.__main__ import (
-    matches_skip_pattern,
     unfurl_directory,
     create_tree,
     print_file_contents,
-    main
+    is_soft_ignored,
+    matches_skip_pattern,
+    main,
 )
-
-from rich.tree import Tree
+from uncoil.config.hard_ignore import HARD_IGNORE_PATTERNS
+from uncoil.config.soft_ignore import SOFT_IGNORE_PATTERNS
 
 @pytest.fixture
 def sample_directory(tmp_path):
@@ -203,11 +224,11 @@ def test_matches_skip_pattern():
     """
     Test the matches_skip_pattern function.
     """
-    assert matches_skip_pattern("src/uncoil/__init__.py", [".git", ".pyc"]) == False
-    assert matches_skip_pattern(".git/config", [".git", ".pyc"]) == True
-    assert matches_skip_pattern("src/uncoil/__pycache__/file.pyc", [".git", ".pyc"]) == True
-    assert matches_skip_pattern("README.md", []) == False
-    assert matches_skip_pattern("README.md", ["README"]) == True
+    assert matches_skip_pattern(".git/config", [".git", ".pyc"])
+    assert matches_skip_pattern("src/uncoil/__pycache__/file.pyc", [".git", ".pyc"])
+    assert matches_skip_pattern("README.md", ["README"])
+    assert not matches_skip_pattern("src/uncoil/__init__.py", [".git", ".pyc"])
+    assert not matches_skip_pattern("README.md", [])
 
 def test_unfurl_directory(sample_directory):
     """
@@ -232,16 +253,15 @@ def test_print_file_contents(sample_directory, capsys):
     """
     Test the print_file_contents function.
     """
-    # Capture the console output
-    captured_output = StringIO()
+
     console = mock.Mock()
     
     file_path = sample_directory / "README.md"
-    print_file_contents(file_path, console)
+    print_file_contents(str(file_path), console, SOFT_IGNORE_PATTERNS)
     
     # Assert that console.print was called with the correct content
     console.print.assert_any_call(f"==> {file_path} <==")
-    console.print.assert_any_call("# Sample README")
+    console.print.assert_any_call("# Sample README", markup=False)
     console.print.assert_any_call("\n")
 
 def test_main_with_tags(sample_directory, tmp_path):
@@ -328,13 +348,63 @@ def test_main_missing_required_argument(tmp_path, capsys):
     ]
     
     with mock.patch.object(sys, 'argv', args):
-        with pytest.raises(SystemExit) as exc_info:
+        with pytest.raises(SystemExit):
             main()
     
     # Capture the stderr output
     captured = capsys.readouterr()
     assert "error: the following arguments are required: -d/--directory" in captured.err
 
+def test_hard_ignore_defaults_actually_skip(tmp_path):
+    # set up a sample project
+    # ├── kept.txt
+    # └── .pytest_cache/foo.txt
+    kept = tmp_path / "kept.txt"
+    kept.write_text("keep me")
+    bad_dir = tmp_path / ".pytest_cache"
+    bad_dir.mkdir()
+    ignored = bad_dir / "foo.txt"
+    ignored.write_text("you should not see me")
+
+    # The unfurl directory should never yield anything under .pytest_cache
+    files = list(unfurl_directory(str(tmp_path), HARD_IGNORE_PATTERNS))
+    assert str(ignored) not in files
+    assert str(kept) in files
+
+    # Tree should never mention .pytest_cache but should show kept.txt
+    tree = create_tree(str(tmp_path), HARD_IGNORE_PATTERNS)
+
+    buf = StringIO()
+    console = Console(file=buf, width=80)
+    console.print(tree)
+    tree_output = buf.getvalue()
+
+    assert ".pytest_cache" not in tree_output
+    assert "kept.txt" in tree_output
+
+def test_soft_ignore_produces_stub_not_content(tmp_path):
+    # fake binary file matching soft ignore pattern
+    img = tmp_path / "pic.JPG"
+    img.write_text("THIS_IS_BINARY_DATA")
+
+    # Simulate printing
+    console = mock.Mock()
+
+    # Double-check helper
+    assert is_soft_ignored(str(img), SOFT_IGNORE_PATTERNS)
+
+    # call the routine
+    print_file_contents(str(img), console, SOFT_IGNORE_PATTERNS)
+
+    # It always prints the header
+    console.print.assert_any_call(f"==> {str(img)} <==")
+
+    # It prints exactly the stub, not the real contents
+    console.print.assert_any_call("[contents ignored]\n", markup=False)
+
+    # It does NOT print the binary payload anywhere
+    all_args = [call.args[0] for call in console.print.call_args_list]
+    assert "THIS_IS_BINARY_DATA" not in all_args
 
 
 ==> ./src/uncoil/__init__.py <==
@@ -347,51 +417,92 @@ import sys
 import argparse
 from rich.console import Console
 from rich.tree import Tree
+import fnmatch
+
+from uncoil.config.hard_ignore import HARD_IGNORE_PATTERNS
+from uncoil.config.soft_ignore import SOFT_IGNORE_PATTERNS
+import logging
 
 def matches_skip_pattern(file_path, skip_patterns):
     lower_file = file_path.lower()
     return any(skip.lower() in lower_file for skip in skip_patterns)
 
+def is_soft_ignored(file_path, soft_patterns):
+    p = file_path.lower()
+    return any(fnmatch.fnmatch(p, pat.lower()) for pat in soft_patterns)
+
 def unfurl_directory(directory, skip_list):
     for root, dirs, files in os.walk(directory, topdown=True):
-        dirs[:] = 
+        dirs[:] = [d for d in dirs if not matches_skip_pattern(os.path.join(root, d), skip_list)]
         for file in files:
             file_path = os.path.join(root, file)
             if not matches_skip_pattern(file_path, skip_list):
                 yield file_path
 
 def create_tree(directory, skip_list):
+    # Figure out which files will actually be shown
+    visible_files = set(unfurl_directory(directory, skip_list))
+
+    # Build the set of all dirs that contain at least one visible file
+    visible_dirs = {os.path.abspath(directory)}
+    for fp in visible_files:
+        cur = os.path.abspath(os.path.dirname(fp))
+        while cur not in visible_dirs:
+            visible_dirs.add(cur)
+            if cur == os.path.abspath(directory):
+                break
+            cur = os.path.dirname(cur)
+
+    # Now walk, only keeping dirs in visible_dirs
     tree = Tree(f"Directory Structure: {directory}")
-    node_map = {directory: tree}
+    node_map = {os.path.abspath(directory): tree}
 
     for root, dirs, files in os.walk(directory, topdown=True):
-        dirs[:] = 
-        
-        parent_node = node_map
+        abs_root = os.path.abspath(root)
 
-        for dir in dirs:
-            dir_path = os.path.join(root, dir)
-            if not matches_skip_pattern(dir_path, skip_list):
-                node_map = parent_node.add(dir)
+        # Drop any hard-skipped dir OR any dir not in visible_dirs
+        pruned_dirs = []
+        for d in dirs:
+            abs_d = os.path.join(abs_root, d)
+            if matches_skip_pattern(abs_d, skip_list):
+                continue
+            if abs_d not in visible_dirs:
+                continue
+            pruned_dirs.append(d)
+        dirs[:] = pruned_dirs
 
-        for file in files:
-            file_path = os.path.join(root, file)
-            if not matches_skip_pattern(file_path, skip_list):
-                parent_node.add(file)  
+        parent = node_map[abs_root]
+        # Add each remaining dir as a branch
+        for d in dirs:
+            abs_d = os.path.join(abs_root, d)
+            node_map[abs_d] = parent.add(d)
+
+        # Add each file that isn’t hard-skipped
+        for f in files:
+            abs_f = os.path.join(abs_root, f)
+            if not matches_skip_pattern(abs_f, skip_list):
+                parent.add(f)
 
     return tree
 
-def print_file_contents(file_path, console):
+def print_file_contents(file_path, console, soft_patterns):
     try:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            contents = file.read()
-            console.print(f"==> {file_path} <==")
-            console.print(contents)
-            console.print("\n")  # Adds an extra newline for readability between files
+        console.print(f"==> {file_path} <==")
+        if is_soft_ignored(file_path, soft_patterns):
+            console.print("[contents ignored]\n", markup=False)
+        else:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                contents = f.read()
+            console.print(contents, markup=False)
+            console.print("\n")
     except Exception as e:
         console.print(f"Error reading {file_path}: {e}")
 
 def main():
+
+    logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
+    logger = logging.getLogger(__name__)
+
     # Set up argument parsing using argparse
     parser = argparse.ArgumentParser(
         description='Process a directory and unfurl its contents.',
@@ -400,18 +511,22 @@ def main():
     parser.add_argument('-d', '--directory', required=True, help='Directory to process.')
     parser.add_argument('-o', '--output_file', help='Output file to redirect output into.')
     parser.add_argument('-x', '--exclude', help='Comma-separated list of file extensions or directories to skip.')
-    parser.add_argument('-t', '--tag', default='codebase', help="Optional tags to wrap around output. E.g. <tag> ... </tag>. Enter 'none' (without quotes) for no tag.")
+    parser.add_argument('-t', '--tag', default='codebase', help="Optional tags to wrap around output. E.g. <tag> ... </tag>. Enter 'none' (without 
+quotes) for no tag.")
     
     args = parser.parse_args()
     
     directory = args.directory
     output_file = args.output_file
-    extensions_to_skip = args.exclude.split(',') if args.exclude else []
     tag_keyword = args.tag
 
     # Initialize Console
     if output_file:
         try:
+            # Ensure the path to the output file exists
+            output_dir = os.path.dirname(output_file)
+            if output_dir and not os.path.exists(output_dir):
+                os.makedirs(output_dir)
             file_handle = open(output_file, 'w', encoding='utf-8')
         except Exception as e:
             print(f"Error opening output file {output_file}: {e}")
@@ -420,6 +535,29 @@ def main():
     else:
         console = Console()
 
+    hard_patterns = list(HARD_IGNORE_PATTERNS)
+
+    # If the user passed -o, add that exact path
+    if output_file:
+        abs_out = os.path.abspath(output_file)
+        hard_patterns.append(abs_out)
+
+        # also ignore by name wherever it appears
+        out_name = os.path.basename(output_file)
+        if out_name not in hard_patterns:
+            logger.info(f"Automatically hard-ignoring output file name '{out_name}' everywhere")
+            hard_patterns.append(out_name)
+
+    # Now consume -x/--exclude flags
+    cli_excludes = args.exclude.split(',') if args.exclude else []
+    for pat in cli_excludes:
+        if pat in hard_patterns:
+            logger.info(f"Ignoring duplicate pattern '{pat}' (already in defaults)")
+        else:
+            hard_patterns.append(pat)
+
+    soft_patterns = list(SOFT_IGNORE_PATTERNS)
+
     # Handle optional tags, with 'none' meaning no tags
     if tag_keyword.lower() != 'none':
         opening_tag = f"<{tag_keyword}>"
@@ -427,16 +565,16 @@ def main():
         console.print(opening_tag)
 
     # Create and print the directory tree
-    tree = create_tree(directory, extensions_to_skip)
+    tree = create_tree(directory, hard_patterns)
     console.print(tree)
     console.print("\n")
 
     # Unfurl files and print their contents
-    files = unfurl_directory(directory, extensions_to_skip)
+    files = unfurl_directory(directory, hard_patterns)
 
     try:
         for file_path in files:
-            print_file_contents(file_path, console)
+            print_file_contents(file_path, console, soft_patterns)
         
         if tag_keyword.lower() != 'none':
             console.print(closing_tag)
@@ -447,6 +585,64 @@ def main():
 if __name__ == '__main__':
     main()
 
+
+
+==> ./src/uncoil/config/__init__.py <==
+
+
+
+==> ./src/uncoil/config/hard_ignore.py <==
+HARD_IGNORE_PATTERNS = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    ".DS_Store",
+    ".ruff_cache",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".cache",
+    "build",
+    "dist",
+    "*.egg-info",
+    ".eggs",
+    "htmlcov",
+    ".coverage",
+    "*.swp",
+    "*~",
+    ".idea",
+    ".vscode",
+]
+
+
+
+==> ./src/uncoil/config/soft_ignore.py <==
+SOFT_IGNORE_PATTERNS = [
+    # archives
+    "*.7z", "*.zip", "*.tar.*", "*.tgz", "*.rar",
+    "*.gz", "*.bz2", "*.xz", "*.zst",
+
+    # binary model/data blobs
+    "*.arrow", "*.bin", "*.ckpt", "*.ftz",
+    "*.h5", "*.joblib", "*.mlmodel",
+    "*.model", "*.msgpack", "*.npy", "*.npz",
+    "*.onnx", "*.ot", "*.parquet", "*.pb",
+    "*.pickle", "*.pkl", "*.pt", "*.pth",
+    "*.safetensors",
+
+    # saved-model folders
+    "saved_model/*",
+
+    # audio
+    "*.pcm", "*.sam", "*.raw",
+    "*.aac", "*.flac", "*.mp3", "*.ogg", "*.wav",
+
+    # images
+    "*.bmp", "*.gif", "*.png", "*.tiff",
+    "*.jpg", "*.jpeg", "*.webp",
+
+    # TensorBoard events
+    "*tfevents*",
+]
 
 
 </uncoil_codebase>

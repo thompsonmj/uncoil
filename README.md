@@ -1,8 +1,12 @@
 # uncoil
 
-`uncoil` is a command-line tool designed to explore and recursively unfurl the contents of a directory into a single output, either printed to the terminal or saved to a file. It has an option to skip certain file extensions or entire subdirectories, as it works best with text-based files. 
+`uncoil` is a command-line tool designed to explore and recursively unfurl the contents of a directory into a single output, either printed to the terminal or saved to a file. It has an option to skip certain file extensions or entire subdirectories, as it works best with text-based files.
 
 It will produce tree visualization of directories and files and will reveal the contents of files not specified to be skipped. 
+
+By default, folders and files that are suspected to provide no useful information (e.g., `.git`, `.venv`, `__pycache__`, etc.) are *hard skipped*, i.e. they are not included in the tree, and their contents are not revealed. Data folders and files which would not provide useful information through their contents but possibly through their presence (e.g. `.jpg`, `.tar`, etc.) are *soft skipped*, i.e. they are shown in the tree, but their contents are not revealed. 
+
+Using the `-x` option, you can specify additional file extensions or directories to *hard skip*.
 
 This can be useful for navigating large projects, quickly summarizing as well as thoroughly revealing the structure and contents of a project.
 
@@ -18,7 +22,7 @@ pip install uncoil
 
 ## Usage
 ```bash
-uncoil -d <directory> [-o <output_file>] [-x <extensions_to_skip,dirs_to_skip>]
+uncoil -d <directory> [-o <output_file>] [-x <extensions_to_skip,dirs_to_skip>] [-t <tag>]
 ```
 
 ### Options
@@ -68,7 +72,7 @@ For example, see the [examples/](examples/) directory for output of the followin
 ```bash
 uncoil -d . \
 -o examples/uncoil.txt \
--x .git,.gitignore,LICENSE,.venv,.ruff_cache,__pycache__,.pytest_cache,examples \
+-x LICENSE \
 -t uncoil_codebase
 ```
 ## Development

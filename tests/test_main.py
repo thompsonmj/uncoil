@@ -1,14 +1,20 @@
+from io import StringIO
+from rich.console import Console
 import sys
-import pytest
 from unittest import mock
 
-from src.uncoil.__main__ import (
-    matches_skip_pattern,
-    unfurl_directory,
-    print_file_contents,
-    main
-)
+import pytest
 
+from src.uncoil.__main__ import (
+    unfurl_directory,
+    create_tree,
+    print_file_contents,
+    is_soft_ignored,
+    matches_skip_pattern,
+    main,
+)
+from uncoil.config.hard_ignore import HARD_IGNORE_PATTERNS
+from uncoil.config.soft_ignore import SOFT_IGNORE_PATTERNS
 
 @pytest.fixture
 def sample_directory(tmp_path):
@@ -81,7 +87,7 @@ def test_print_file_contents(sample_directory, capsys):
     console = mock.Mock()
     
     file_path = sample_directory / "README.md"
-    print_file_contents(file_path, console)
+    print_file_contents(str(file_path), console, SOFT_IGNORE_PATTERNS)
     
     # Assert that console.print was called with the correct content
     console.print.assert_any_call(f"==> {file_path} <==")
@@ -178,3 +184,54 @@ def test_main_missing_required_argument(tmp_path, capsys):
     # Capture the stderr output
     captured = capsys.readouterr()
     assert "error: the following arguments are required: -d/--directory" in captured.err
+
+def test_hard_ignore_defaults_actually_skip(tmp_path):
+    # set up a sample project
+    # ├── kept.txt
+    # └── .pytest_cache/foo.txt
+    kept = tmp_path / "kept.txt"
+    kept.write_text("keep me")
+    bad_dir = tmp_path / ".pytest_cache"
+    bad_dir.mkdir()
+    ignored = bad_dir / "foo.txt"
+    ignored.write_text("you should not see me")
+
+    # The unfurl directory should never yield anything under .pytest_cache
+    files = list(unfurl_directory(str(tmp_path), HARD_IGNORE_PATTERNS))
+    assert str(ignored) not in files
+    assert str(kept) in files
+
+    # Tree should never mention .pytest_cache but should show kept.txt
+    tree = create_tree(str(tmp_path), HARD_IGNORE_PATTERNS)
+
+    buf = StringIO()
+    console = Console(file=buf, width=80)
+    console.print(tree)
+    tree_output = buf.getvalue()
+
+    assert ".pytest_cache" not in tree_output
+    assert "kept.txt" in tree_output
+
+def test_soft_ignore_produces_stub_not_content(tmp_path):
+    # fake binary file matching soft ignore pattern
+    img = tmp_path / "pic.JPG"
+    img.write_text("THIS_IS_BINARY_DATA")
+
+    # Simulate printing
+    console = mock.Mock()
+
+    # Double-check helper
+    assert is_soft_ignored(str(img), SOFT_IGNORE_PATTERNS)
+
+    # call the routine
+    print_file_contents(str(img), console, SOFT_IGNORE_PATTERNS)
+
+    # It always prints the header
+    console.print.assert_any_call(f"==> {str(img)} <==")
+
+    # It prints exactly the stub, not the real contents
+    console.print.assert_any_call("[contents ignored]\n", markup=False)
+
+    # It does NOT print the binary payload anywhere
+    all_args = [call.args[0] for call in console.print.call_args_list]
+    assert "THIS_IS_BINARY_DATA" not in all_args
