@@ -71,3 +71,20 @@ uncoil -d . \
 -x .git,.gitignore,LICENSE,.venv,.ruff_cache,__pycache__,.pytest_cache,examples \
 -t uncoil_codebase
 ```
+## Development
+To develop the package further:
+
+1. Clone the repository and create a branch
+2. Install with dev dependencies:
+```bash
+pip install -e ".[dev]"
+```
+3. Install pre-commit hook
+```bash
+pre-commit install
+pre-commit autoupdate # optionally update
+```
+4. Run tests:
+```bash
+pytest
+```
