@@ -8,6 +8,8 @@ By default, folders and files that are suspected to provide no useful informatio
 
 Using the `-x` option, you can specify additional file extensions or directories to *hard skip*.
 
+The package handles Jupyter notebooks by converting to text using `jupytext` in the output without affecting the contents of the notebook or adding any files to the directory.
+
 This can be useful for navigating large projects, quickly summarizing as well as thoroughly revealing the structure and contents of a project.
 
 It may be useful for providing context of a codebase to a Large Language Model (LLM).
