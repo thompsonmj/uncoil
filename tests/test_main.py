@@ -1,11 +1,12 @@
 from io import StringIO
 from rich.console import Console
 import sys
+import json
 from unittest import mock
 
 import pytest
 
-from src.uncoil.__main__ import (
+from uncoil.__main__ import (
     unfurl_directory,
     create_tree,
     print_file_contents,
@@ -15,6 +16,78 @@ from src.uncoil.__main__ import (
 )
 from uncoil.config.hard_ignore import HARD_IGNORE_PATTERNS
 from uncoil.config.soft_ignore import SOFT_IGNORE_PATTERNS
+
+@pytest.fixture
+def sample_notebook(tmp_path):
+    nb = {
+        "cells": [
+            {"cell_type": "markdown", "source": ["# Hello Notebook\n", "This is a test."]},
+            {"cell_type": "code",     "source": ["print('world')\n"]},
+        ]
+    }
+    path = tmp_path / "demo.ipynb"
+    path.write_text(json.dumps(nb), encoding="utf-8")
+    return path
+
+def test_print_file_contents_ipynb_with_jupytext(sample_notebook, monkeypatch):
+    console = mock.Mock(spec=Console)
+
+    # Inject a fake jupytext module that succeeds
+    fake_jt = mock.MagicMock()
+    # Use read instead of readf to match the real API
+    fake_jt.read.return_value = "dummy-notebook-object"
+    # writes returns a string with "# %%"
+    fake_jt.writes.return_value = "# %%\n# Hello Notebook\nprint('world')\n"
+    monkeypatch.setitem(sys.modules, 'jupytext', fake_jt)
+
+    print_file_contents(str(sample_notebook), console, SOFT_IGNORE_PATTERNS)
+
+    # It should hit our fake jupytext path:
+    console.print.assert_any_call(f"==> {sample_notebook} <==")
+
+    printed = "".join(
+        call.args[0] for call in console.print.call_args_list
+        if isinstance(call.args[0], str)
+    )
+
+    # Now "# %%" must be present
+    assert "# %%" in printed
+    # And our markdown + code
+    assert "# Hello Notebook" in printed
+    assert "print('world')" in printed
+
+    # Now "# %%" must be present
+    assert "# %%" in printed
+    # And our markdown + code
+    assert "# Hello Notebook" in printed
+    assert "print('world')" in printed
+
+def test_print_file_contents_ipynb_json_fallback(sample_notebook, monkeypatch):
+    console = mock.Mock(spec=Console)
+
+    # Simulate jupytext.read failing
+    fake_jupytext = mock.MagicMock()
+    fake_jupytext.read.side_effect = Exception("conversion error")
+    # Ensure writes() isn't even attempted
+    fake_jupytext.writes.side_effect = Exception("should not get here")
+    monkeypatch.setitem(sys.modules, 'jupytext', fake_jupytext)
+
+    print_file_contents(str(sample_notebook), console, SOFT_IGNORE_PATTERNS)
+
+    # Header still prints
+    console.print.assert_any_call(f"==> {sample_notebook} <==")
+
+    # In the fallback we emit "# Cell [n] — <type>" and fenced code blocks
+    printed = "".join(
+        call.args[0] for call in console.print.call_args_list
+        if isinstance(call.args[0], str)
+    )
+
+    assert "# Cell [1] — markdown" in printed
+    assert "This is a test." in printed
+    assert "# Cell [2] — code" in printed
+    assert "```python" in printed
+    assert "print('world')" in printed
 
 @pytest.fixture
 def sample_directory(tmp_path):

@@ -4,6 +4,7 @@ import argparse
 from rich.console import Console
 from rich.tree import Tree
 import fnmatch
+import json
 
 from uncoil.config.hard_ignore import HARD_IGNORE_PATTERNS
 from uncoil.config.soft_ignore import SOFT_IGNORE_PATTERNS
@@ -71,18 +72,50 @@ def create_tree(directory, skip_list):
 
     return tree
 
-def print_file_contents(file_path, console, soft_patterns):
-    try:
-        console.print(f"==> {file_path} <==")
-        if is_soft_ignored(file_path, soft_patterns):
-            console.print("[contents ignored]\n", markup=False)
-        else:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                contents = f.read()
-            console.print(contents, markup=False)
+def print_file_contents(file_path, console: Console, soft_patterns):
+    console.print(f"==> {file_path} <==")
+
+    if file_path.lower().endswith(".ipynb"):
+        try:
+            # Primary path: Jupytext conversion
+            import jupytext
+            nb = jupytext.read(file_path)
+            text = jupytext.writes(nb, fmt="py:percent")
+            console.print(text, markup=False)
             console.print("\n")
-    except Exception as e:
-        console.print(f"Error reading {file_path}: {e}")
+            return
+        except Exception:
+            # Fallback: raw JSON parse
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    notebook = json.load(f)
+                cells = notebook.get("cells", [])
+                parts = []
+                for idx, cell in enumerate(cells, 1):
+                    header = f"# Cell [{idx}] — {cell.get('cell_type')}"
+                    src = "".join(cell.get("source", []))
+                    if cell.get("cell_type") == "code":
+                        parts.append(f"{header}\n```python\n{src}```")
+                    else:
+                        parts.append(f"{header}\n{src}")
+                text = "\n\n".join(parts)
+            except Exception as e:
+                text = f"[Error parsing notebook JSON: {e}]"
+
+        console.print(text, markup=False)
+        console.print("\n")
+        return
+
+    # Non-notebook files
+    if is_soft_ignored(file_path, soft_patterns):
+        console.print("[contents ignored]\n", markup=False)
+    else:
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                console.print(f.read(), markup=False)
+                console.print("\n")
+        except Exception as e:
+            console.print(f"[Error reading file: {e}]\n", markup=False)
 
 def main():
 

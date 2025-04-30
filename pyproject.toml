@@ -7,7 +7,7 @@ packages = ["src/uncoil"]
 
 [project]
 name = "uncoil"
-version = "1.2.0"
+version = "1.3.0"
 description = "A command-line tool to explore and print contents of directories with options to skip certain patterns."
 authors = [{ name = "Matthew J. Thompson", email = "thompson.m.j@outlook.com" }]
 license = {file = "LICENSE"}
@@ -15,6 +15,7 @@ readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
     "rich >= 13.6.0",
+    "jupytext"
 ]
 
 [project.optional-dependencies]
@@ -22,6 +23,14 @@ dev = [
     "pytest",
     "ruff",
     "pre-commit",
+    "nbformat",
+    "ipynb",
+    "ipykernel",
+]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning:jupyter_client.*:",
 ]
 
 [project.scripts]
